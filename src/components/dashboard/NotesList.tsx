@@ -1,0 +1,226 @@
+import { useState, useEffect } from "react";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/context/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
+import { Search, FileText, Download, Eye, EyeOff } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+interface Subject {
+  id: string;
+  name: string;
+  category: string;
+}
+
+interface Note {
+  id: string;
+  title: string;
+  description: string | null;
+  subject: string;
+  subject_id: string;
+  topic: string;
+  file_url: string;
+  file_type: string;
+  is_public: boolean;
+  created_at: string;
+  user_id: string;
+}
+
+const NotesList = () => {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const [notes, setNotes] = useState<Note[]>([]);
+  const [filteredNotes, setFilteredNotes] = useState<Note[]>([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedSubjectId, setSelectedSubjectId] = useState<string | null>(null);
+  const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    if (user) {
+      fetchNotes();
+      fetchSubjects();
+    }
+  }, [user]);
+
+  useEffect(() => {
+    filterNotes();
+  }, [searchTerm, selectedSubjectId, notes]);
+
+  const fetchNotes = async () => {
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('notes')
+        .select('*')
+        .or(`user_id.eq.${user?.id},is_public.eq.true`)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      setNotes(data || []);
+      setFilteredNotes(data || []);
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: "Failed to load notes. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const fetchSubjects = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('subjects')
+        .select('*')
+        .order('name');
+
+      if (error) throw error;
+
+      if (data) {
+        setSubjects(data);
+      }
+    } catch (error) {
+      console.error('Error fetching subjects:', error);
+    }
+  };
+
+  const filterNotes = () => {
+    let filtered = [...notes];
+
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      filtered = filtered.filter(note =>
+        note.title.toLowerCase().includes(term) ||
+        note.description?.toLowerCase().includes(term) ||
+        note.topic.toLowerCase().includes(term)
+      );
+    }
+
+    if (selectedSubjectId) {
+      filtered = filtered.filter(note => note.subject_id === selectedSubjectId);
+    }
+
+    setFilteredNotes(filtered);
+  };
+
+  const handleDownload = async (note: Note) => {
+    try {
+      // Get a fresh public URL for the file
+      const { data: { publicUrl } } = supabase.storage
+        .from('notes')
+        .getPublicUrl(note.file_url.split('/').slice(-2).join('/'));  // Extract the path from the full URL
+      
+      window.open(publicUrl, '_blank');
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: "Failed to download file. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const getFileTypeIcon = (fileType: string) => {
+    // You can add more file type icons here
+    return <FileText className="h-5 w-5" />;
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString();
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-col md:flex-row gap-4">
+        <div className="flex-1 relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500" />
+          <Input
+            placeholder="Search notes by title, description, or topic..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+        <div className="w-full md:w-48">
+          <Select value={selectedSubjectId || undefined} onValueChange={setSelectedSubjectId}>
+            <SelectTrigger>
+              <SelectValue placeholder="All Subjects" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Subjects</SelectItem>
+              {subjects.map((subject) => (
+                <SelectItem key={subject.id} value={subject.id}>
+                  {subject.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      {isLoading ? (
+        <div className="text-center py-8">
+          <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full mx-auto" />
+        </div>
+      ) : filteredNotes.length > 0 ? (
+        <div className="grid gap-4">
+          {filteredNotes.map((note) => (
+            <div
+              key={note.id}
+              className="bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700 flex items-center gap-4"
+            >
+              <div className="text-primary">
+                {getFileTypeIcon(note.file_type)}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <h3 className="font-medium truncate">{note.title}</h3>
+                  {note.is_public ? (
+                    <Eye className="h-4 w-4 text-gray-500" />
+                  ) : (
+                    <EyeOff className="h-4 w-4 text-gray-500" />
+                  )}
+                </div>
+                <div className="text-sm text-gray-500 dark:text-gray-400">
+                  {note.description && (
+                    <p className="truncate">{note.description}</p>
+                  )}
+                  <p>
+                    <span className="font-medium">{note.subject}</span> • {note.topic} • {formatDate(note.created_at)}
+                  </p>
+                </div>
+              </div>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => handleDownload(note)}
+                title="Download"
+              >
+                <Download className="h-4 w-4" />
+              </Button>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+          <FileText className="h-12 w-12 mx-auto mb-2 opacity-50" />
+          <p className="text-lg">No notes found</p>
+          <p className="text-sm">Try adjusting your search or filters</p>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default NotesList; 
