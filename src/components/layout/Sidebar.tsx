@@ -14,11 +14,13 @@ import {
   Settings,
   CreditCard,
   LayoutDashboard,
+  User,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useAuth } from "@/context/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/supabase";
+import { cn } from "@/lib/utils";
 
 type NavItem = {
   title: string;
@@ -68,7 +70,7 @@ const Sidebar = ({ isMobileOpen, closeMobileSidebar }: { isMobileOpen: boolean; 
       icon: <LayoutDashboard className="h-5 w-5" />,
       adminOnly: true,
     },
-    // Contributor dashboard
+    // Course management for contributors
     {
       title: "Course Management",
       href: "/app/courses/manage",
@@ -119,6 +121,11 @@ const Sidebar = ({ isMobileOpen, closeMobileSidebar }: { isMobileOpen: boolean; 
       icon: <CreditCard className="h-5 w-5" />,
     },
     {
+      title: "Profile",
+      href: "/app/profile",
+      icon: <User className="h-5 w-5" />,
+    },
+    {
       title: "Settings",
       href: "/app/settings",
       icon: <Settings className="h-5 w-5" />,
@@ -155,11 +162,12 @@ const Sidebar = ({ isMobileOpen, closeMobileSidebar }: { isMobileOpen: boolean; 
                 to={item.href}
                 onClick={closeMobileSidebar}
                 className={({ isActive }) =>
-                  `flex items-center gap-3 rounded-lg px-3 py-2 mb-1 transition-colors ${
+                  cn(
+                    "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
                     isActive
                       ? "bg-gradient-to-r from-blue-100 to-purple-100 text-blue-600 dark:from-blue-950 dark:to-purple-950 dark:text-blue-400"
                       : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
-                  }`
+                  )
                 }
               >
                 {item.icon}
@@ -185,11 +193,12 @@ const Sidebar = ({ isMobileOpen, closeMobileSidebar }: { isMobileOpen: boolean; 
                     to={`/courses/${course.id}`}
                     onClick={closeMobileSidebar}
                     className={({ isActive }) =>
-                      `flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors ${
+                      cn(
+                        "flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors",
                         isActive
                           ? "bg-gradient-to-r from-blue-100 to-purple-100 text-blue-600 dark:from-blue-950 dark:to-purple-950 dark:text-blue-400"
                           : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
-                      }`
+                      )
                     }
                   >
                     <FlaskConical className="h-4 w-4" />

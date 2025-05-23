@@ -1,179 +1,299 @@
-import { useEffect, useState } from "react";
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { 
-  BookOpen, 
-  Plus,
-  FileText,
-  Users,
-  Settings,
-  BarChart,
-} from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/context/AuthContext';
+import { Button } from '@/components/ui/button';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { useToast } from '@/components/ui/use-toast';
+import { supabase } from '@/lib/supabase';
+import { Loader2, Plus } from 'lucide-react';
 
 interface Course {
   id: string;
   title: string;
   description: string;
-  enrolled_count: number;
-  status: string;
+  subject: string;
+  semester: string;
+  year: number;
+  is_paid: boolean;
+  price: number;
+  created_at: string;
 }
 
 const CourseManagement = () => {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const { toast } = useToast();
   const [courses, setCourses] = useState<Course[]>([]);
-  const [stats, setStats] = useState({
-    totalCourses: 0,
-    totalStudents: 0,
-    activeModules: 0,
-    completionRate: 0,
+  const [loading, setLoading] = useState(true);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [formData, setFormData] = useState({
+    title: '',
+    description: '',
+    subject: '',
+    semester: '',
+    year: new Date().getFullYear(),
+    is_paid: false,
+    price: 0,
   });
 
   useEffect(() => {
+    if (!user) {
+      navigate('/auth');
+      return;
+    }
+
     fetchCourses();
-    fetchStats();
-  }, []);
+  }, [user, navigate]);
 
   const fetchCourses = async () => {
     try {
       const { data, error } = await supabase
         .from('courses')
         .select('*')
-        .eq('creator_id', (await supabase.auth.getUser()).data.user?.id);
+        .order('created_at', { ascending: false });
 
       if (error) throw error;
       setCourses(data || []);
     } catch (error) {
       console.error('Error fetching courses:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to fetch courses',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
-  const fetchStats = async () => {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+
     try {
-      // Example stats calculation
-      setStats({
-        totalCourses: courses.length,
-        totalStudents: courses.reduce((acc, course) => acc + (course.enrolled_count || 0), 0),
-        activeModules: Math.floor(Math.random() * 50),
-        completionRate: Math.floor(Math.random() * 100),
+      const { error } = await supabase.from('courses').insert([formData]);
+
+      if (error) throw error;
+
+      toast({
+        title: 'Success',
+        description: 'Course created successfully',
       });
+
+      setIsDialogOpen(false);
+      setFormData({
+        title: '',
+        description: '',
+        subject: '',
+        semester: '',
+        year: new Date().getFullYear(),
+        is_paid: false,
+        price: 0,
+      });
+      fetchCourses();
     } catch (error) {
-      console.error('Error fetching stats:', error);
+      console.error('Error creating course:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to create course',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
     }
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="w-8 h-8 animate-spin" />
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold tracking-tight">Course Management</h1>
-        <Button>
-          <Plus className="mr-2 h-4 w-4" /> Create Course
-        </Button>
+    <div className="container mx-auto py-8">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold">Course Management</h1>
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogTrigger asChild>
+            <Button>
+              <Plus className="w-4 h-4 mr-2" />
+              Add Course
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Add New Course</DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <Label htmlFor="title">Title</Label>
+                <Input
+                  id="title"
+                  value={formData.title}
+                  onChange={(e) =>
+                    setFormData({ ...formData, title: e.target.value })
+                  }
+                  required
+                />
+              </div>
+              <div>
+                <Label htmlFor="description">Description</Label>
+                <Textarea
+                  id="description"
+                  value={formData.description}
+                  onChange={(e) =>
+                    setFormData({ ...formData, description: e.target.value })
+                  }
+                  required
+                />
+              </div>
+              <div>
+                <Label htmlFor="subject">Subject</Label>
+                <Select
+                  value={formData.subject}
+                  onValueChange={(value) =>
+                    setFormData({ ...formData, subject: value })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select subject" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Web Development">Web Development</SelectItem>
+                    <SelectItem value="Mobile Development">
+                      Mobile Development
+                    </SelectItem>
+                    <SelectItem value="Cloud Computing">Cloud Computing</SelectItem>
+                    <SelectItem value="DevOps">DevOps</SelectItem>
+                    <SelectItem value="Data Science">Data Science</SelectItem>
+                    <SelectItem value="Cybersecurity">Cybersecurity</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="semester">Semester</Label>
+                <Select
+                  value={formData.semester}
+                  onValueChange={(value) =>
+                    setFormData({ ...formData, semester: value })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select semester" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="First">First</SelectItem>
+                    <SelectItem value="Second">Second</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="year">Year</Label>
+                <Input
+                  id="year"
+                  type="number"
+                  value={formData.year}
+                  onChange={(e) =>
+                    setFormData({ ...formData, year: parseInt(e.target.value) })
+                  }
+                  required
+                />
+              </div>
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  id="is_paid"
+                  checked={formData.is_paid}
+                  onChange={(e) =>
+                    setFormData({ ...formData, is_paid: e.target.checked })
+                  }
+                  className="rounded border-gray-300"
+                />
+                <Label htmlFor="is_paid">Paid Course</Label>
+              </div>
+              {formData.is_paid && (
+                <div>
+                  <Label htmlFor="price">Price</Label>
+                  <Input
+                    id="price"
+                    type="number"
+                    step="0.01"
+                    value={formData.price}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        price: parseFloat(e.target.value),
+                      })
+                    }
+                    required
+                  />
+                </div>
+              )}
+              <Button type="submit" disabled={loading}>
+                {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                Create Course
+              </Button>
+            </form>
+          </DialogContent>
+        </Dialog>
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card className="p-6">
-          <div className="flex items-center gap-4">
-            <div className="rounded-full bg-blue-100 p-3 dark:bg-blue-900">
-              <BookOpen className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Total Courses</p>
-              <h3 className="text-2xl font-bold">{stats.totalCourses}</h3>
-            </div>
-          </div>
-        </Card>
-
-        <Card className="p-6">
-          <div className="flex items-center gap-4">
-            <div className="rounded-full bg-green-100 p-3 dark:bg-green-900">
-              <Users className="h-6 w-6 text-green-600 dark:text-green-400" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Total Students</p>
-              <h3 className="text-2xl font-bold">{stats.totalStudents}</h3>
-            </div>
-          </div>
-        </Card>
-
-        <Card className="p-6">
-          <div className="flex items-center gap-4">
-            <div className="rounded-full bg-purple-100 p-3 dark:bg-purple-900">
-              <FileText className="h-6 w-6 text-purple-600 dark:text-purple-400" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Active Modules</p>
-              <h3 className="text-2xl font-bold">{stats.activeModules}</h3>
-            </div>
-          </div>
-        </Card>
-
-        <Card className="p-6">
-          <div className="flex items-center gap-4">
-            <div className="rounded-full bg-yellow-100 p-3 dark:bg-yellow-900">
-              <BarChart className="h-6 w-6 text-yellow-600 dark:text-yellow-400" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Completion Rate</p>
-              <h3 className="text-2xl font-bold">{stats.completionRate}%</h3>
-            </div>
-          </div>
-        </Card>
+      <div className="bg-white rounded-lg shadow overflow-hidden">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Title</TableHead>
+              <TableHead>Subject</TableHead>
+              <TableHead>Semester</TableHead>
+              <TableHead>Year</TableHead>
+              <TableHead>Price</TableHead>
+              <TableHead>Created At</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {courses.map((course) => (
+              <TableRow key={course.id}>
+                <TableCell className="font-medium">{course.title}</TableCell>
+                <TableCell>{course.subject}</TableCell>
+                <TableCell>{course.semester}</TableCell>
+                <TableCell>{course.year}</TableCell>
+                <TableCell>
+                  {course.is_paid ? `$${course.price.toFixed(2)}` : 'Free'}
+                </TableCell>
+                <TableCell>
+                  {new Date(course.created_at).toLocaleDateString()}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
       </div>
-
-      {/* Main Content */}
-      <Tabs defaultValue="courses" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="courses">My Courses</TabsTrigger>
-          <TabsTrigger value="modules">Modules</TabsTrigger>
-          <TabsTrigger value="students">Students</TabsTrigger>
-          <TabsTrigger value="analytics">Analytics</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="courses" className="space-y-4">
-          <Card className="p-6">
-            <h2 className="text-xl font-semibold mb-4">Course List</h2>
-            <div className="space-y-4">
-              {courses.map((course) => (
-                <Card key={course.id} className="p-4 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="font-semibold">{course.title}</h3>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">{course.description}</p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Button variant="outline" size="sm">Edit</Button>
-                      <Button variant="outline" size="sm">View</Button>
-                    </div>
-                  </div>
-                </Card>
-              ))}
-            </div>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="modules" className="space-y-4">
-          <Card className="p-6">
-            <h2 className="text-xl font-semibold mb-4">Module Management</h2>
-            {/* Add module management interface here */}
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="students" className="space-y-4">
-          <Card className="p-6">
-            <h2 className="text-xl font-semibold mb-4">Student Management</h2>
-            {/* Add student management interface here */}
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="analytics" className="space-y-4">
-          <Card className="p-6">
-            <h2 className="text-xl font-semibold mb-4">Course Analytics</h2>
-            {/* Add analytics interface here */}
-          </Card>
-        </TabsContent>
-      </Tabs>
     </div>
   );
 };
