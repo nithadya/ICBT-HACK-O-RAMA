@@ -37,7 +37,7 @@ const NotesList = () => {
   const [notes, setNotes] = useState<Note[]>([]);
   const [filteredNotes, setFilteredNotes] = useState<Note[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
+  const [selectedCourseId, setSelectedCourseId] = useState<string>("all");
   const [courses, setCourses] = useState<Course[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -107,7 +107,7 @@ const NotesList = () => {
       );
     }
 
-    if (selectedCourseId) {
+    if (selectedCourseId && selectedCourseId !== 'all') {
       filtered = filtered.filter(note => note.course_id === selectedCourseId);
     }
 
@@ -153,12 +153,12 @@ const NotesList = () => {
           />
         </div>
         <div className="w-full md:w-48">
-          <Select value={selectedCourseId || undefined} onValueChange={setSelectedCourseId}>
+          <Select value={selectedCourseId} onValueChange={setSelectedCourseId}>
             <SelectTrigger>
               <SelectValue placeholder="All Courses" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All Courses</SelectItem>
+              <SelectItem value="all">All Courses</SelectItem>
               {courses.map((course) => (
                 <SelectItem key={course.id} value={course.id}>
                   {course.title}
