@@ -1,6 +1,5 @@
-
-import { useState } from "react";
-import { Navigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Navigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,9 +11,11 @@ import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 
 const Auth = () => {
+  const location = useLocation();
+  const defaultTab = location.state?.defaultTab || "sign-in";
   const { user, signIn, signUp, isLoading } = useAuth();
   const { toast } = useToast();
-  const [authMode, setAuthMode] = useState<"sign-in" | "sign-up">("sign-in");
+  const [authMode, setAuthMode] = useState<"sign-in" | "sign-up">(defaultTab);
   const [showPassword, setShowPassword] = useState(false);
 
   // Sign In form state
@@ -33,7 +34,23 @@ const Auth = () => {
 
   // Redirect if user is already logged in
   if (user) {
-    return <Navigate to="/" replace />;
+    // Redirect to appropriate dashboard based on user role
+    const userRole = user.user_metadata?.role;
+    let redirectPath = '/app';
+    
+    switch (userRole) {
+      case 'admin':
+        redirectPath = '/app/admin';
+        break;
+      case 'contributor':
+        redirectPath = '/app/courses';
+        break;
+      default:
+        redirectPath = '/app';
+        break;
+    }
+    
+    return <Navigate to={redirectPath} replace />;
   }
 
   const validateSignIn = () => {

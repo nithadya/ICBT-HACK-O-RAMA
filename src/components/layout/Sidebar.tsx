@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import {
@@ -27,12 +26,14 @@ type NavItem = {
   icon: JSX.Element;
   badge?: string | number;
   adminOnly?: boolean;
+  contributorOnly?: boolean;
 };
 
 const Sidebar = ({ isMobileOpen, closeMobileSidebar }: { isMobileOpen: boolean; closeMobileSidebar: () => void }) => {
-  const { isAdmin } = useAuth();
+  const { user, isAdmin } = useAuth();
   const location = useLocation();
   const [enrolledCourses, setEnrolledCourses] = useState<any[]>([]);
+  const userRole = user?.user_metadata?.role;
 
   useEffect(() => {
     fetchEnrolledCourses();
@@ -54,67 +55,81 @@ const Sidebar = ({ isMobileOpen, closeMobileSidebar }: { isMobileOpen: boolean; 
   };
 
   const navItems: NavItem[] = [
+    // Common dashboard for all users
     {
       title: "Dashboard",
-      href: "/",
+      href: "/app",
       icon: <Home className="h-5 w-5" />,
     },
+    // Admin dashboard
+    {
+      title: "Admin Dashboard",
+      href: "/app/admin",
+      icon: <LayoutDashboard className="h-5 w-5" />,
+      adminOnly: true,
+    },
+    // Contributor dashboard
+    {
+      title: "Course Management",
+      href: "/app/courses/manage",
+      icon: <BookOpen className="h-5 w-5" />,
+      contributorOnly: true,
+    },
+    // Regular navigation items
     {
       title: "Courses",
-      href: "/courses",
+      href: "/app/courses",
       icon: <BookOpen className="h-5 w-5" />,
     },
     {
       title: "Notes",
-      href: "/notes",
+      href: "/app/notes",
       icon: <FileText className="h-5 w-5" />,
       badge: 3,
     },
     {
       title: "Flashcards",
-      href: "/flashcards",
+      href: "/app/flashcards",
       icon: <Layers className="h-5 w-5" />,
     },
     {
       title: "Revision Tracker",
-      href: "/revision",
+      href: "/app/revision",
       icon: <BarChart3 className="h-5 w-5" />,
     },
     {
       title: "Discussions",
-      href: "/discussions",
+      href: "/app/discussions",
       icon: <MessageCircle className="h-5 w-5" />,
       badge: "New",
     },
     {
       title: "Assignments",
-      href: "/assignments",
+      href: "/app/assignments",
       icon: <FileCheck className="h-5 w-5" />,
     },
     {
       title: "Leaderboard",
-      href: "/leaderboard",
+      href: "/app/leaderboard",
       icon: <Trophy className="h-5 w-5" />,
     },
     {
       title: "Payments",
-      href: "/payments",
+      href: "/app/payments",
       icon: <CreditCard className="h-5 w-5" />,
     },
     {
-      title: "Admin Dashboard",
-      href: "/admin",
-      icon: <LayoutDashboard className="h-5 w-5" />,
-      adminOnly: true,
-    },
-    {
       title: "Settings",
-      href: "/settings",
+      href: "/app/settings",
       icon: <Settings className="h-5 w-5" />,
     },
   ];
 
-  const filteredNavItems = navItems.filter(item => !item.adminOnly || (item.adminOnly && isAdmin));
+  const filteredNavItems = navItems.filter(item => {
+    if (item.adminOnly && !isAdmin) return false;
+    if (item.contributorOnly && userRole !== 'contributor' && !isAdmin) return false;
+    return true;
+  });
 
   return (
     <>

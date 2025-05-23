@@ -29,6 +29,11 @@ interface Subject {
   category: string;
 }
 
+interface Course {
+  id: string;
+  title: string;
+}
+
 interface NotesUploadProps {
   onUploadComplete?: () => void;
 }
@@ -54,28 +59,26 @@ const NotesUpload = ({ onUploadComplete }: NotesUploadProps) => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [subjectId, setSubjectId] = useState<string | undefined>();
-  const [topic, setTopic] = useState("");
+  const [courseId, setCourseId] = useState<string>("");
   const [isPublic, setIsPublic] = useState(false);
-  const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [courses, setCourses] = useState<Course[]>([]);
 
-  // Fetch subjects when dialog opens
+  // Fetch courses when dialog opens
   const handleDialogOpen = async (open: boolean) => {
     setIsOpen(open);
     if (open) {
       try {
         const { data, error } = await supabase
-          .from('subjects')
-          .select('*')
-          .order('name');
+          .from('courses')
+          .select('id, title');
         
         if (error) throw error;
         
         if (data) {
-          setSubjects(data);
+          setCourses(data);
         }
       } catch (error) {
-        console.error('Error fetching subjects:', error);
+        console.error('Error fetching courses:', error);
       }
     } else {
       // Reset form when dialog closes
@@ -87,36 +90,34 @@ const NotesUpload = ({ onUploadComplete }: NotesUploadProps) => {
     setSelectedFile(null);
     setTitle("");
     setDescription("");
-    setSubjectId(undefined);
-    setTopic("");
+    setCourseId("");
     setIsPublic(false);
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
   };
 
-  const validateFile = (file: File): string | null => {
-    if (!ALLOWED_FILE_TYPES.includes(file.type)) {
-      return "Invalid file type. Please upload PDF, PowerPoint, images (JPEG, PNG, GIF), or text files.";
-    }
-    if (file.size > MAX_FILE_SIZE) {
-      return "File size exceeds 10MB limit.";
-    }
-    return null;
-  };
-
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const error = validateFile(file);
-    if (error) {
+    // Check file size
+    if (file.size > MAX_FILE_SIZE) {
       toast({
-        title: "Invalid File",
-        description: error,
+        title: "Error",
+        description: "File size must be less than 10MB",
         variant: "destructive",
       });
-      e.target.value = "";
+      return;
+    }
+
+    // Check file type
+    if (!ALLOWED_FILE_TYPES.includes(file.type)) {
+      toast({
+        title: "Error",
+        description: "File type not supported",
+        variant: "destructive",
+      });
       return;
     }
 
@@ -144,10 +145,10 @@ const NotesUpload = ({ onUploadComplete }: NotesUploadProps) => {
       return;
     }
 
-    if (!title || !subjectId || !topic) {
+    if (!title || !courseId) {
       toast({
         title: "Error",
-        description: "Please fill in all required fields (title, subject, and topic).",
+        description: "Please fill in all required fields (title and course).",
         variant: "destructive",
       });
       return;
@@ -167,23 +168,18 @@ const NotesUpload = ({ onUploadComplete }: NotesUploadProps) => {
 
       if (uploadError) throw uploadError;
 
-      // Get the public URL using the correct format
+      // Get the public URL
       const { data: { publicUrl } } = supabase.storage
         .from('notes')
         .getPublicUrl(filePath);
-
-      // Get subject name for the record
-      const subject = subjects.find(s => s.id === subjectId)?.name;
 
       // Create note record in database
       const { error: dbError } = await supabase
         .from('notes')
         .insert({
           title,
-          description,
-          subject_id: subjectId,
-          subject, // Keep the subject name for backward compatibility
-          topic,
+          content: description,
+          course_id: courseId,
           file_url: publicUrl,
           file_type: selectedFile.type,
           is_public: isPublic,
@@ -269,34 +265,20 @@ const NotesUpload = ({ onUploadComplete }: NotesUploadProps) => {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="subject">Subject *</Label>
-              <Select value={subjectId} onValueChange={setSubjectId}>
-                <SelectTrigger id="subject">
-                  <SelectValue placeholder="Select subject" />
-                </SelectTrigger>
-                <SelectContent>
-                  {subjects.map((subject) => (
-                    <SelectItem key={subject.id} value={subject.id}>
-                      {subject.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <Label htmlFor="topic">Topic *</Label>
-              <Input
-                id="topic"
-                value={topic}
-                onChange={(e) => setTopic(e.target.value)}
-                placeholder="Enter topic"
-                disabled={isUploading}
-                required
-              />
-            </div>
+          <div>
+            <Label htmlFor="course">Course *</Label>
+            <Select value={courseId} onValueChange={setCourseId}>
+              <SelectTrigger id="course">
+                <SelectValue placeholder="Select course" />
+              </SelectTrigger>
+              <SelectContent>
+                {courses.map((course) => (
+                  <SelectItem key={course.id} value={course.id}>
+                    {course.title}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="flex items-center space-x-2">

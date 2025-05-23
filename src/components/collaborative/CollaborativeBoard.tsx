@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { MessageSquarePlus, ThumbsUp, Flag, CheckCircle2 } from "lucide-react";
+import { awardPoints } from "@/lib/points";
 
 interface User {
   email: string;
@@ -195,6 +196,9 @@ const CollaborativeBoard = () => {
       setIsDialogOpen(false);
       setNewPost({ title: "", content: "", type: "question" });
       
+      // Award points for creating a post
+      await awardPoints(user.id, "COLLABORATIVE_POST");
+      
       toast({
         title: "Success",
         description: "Your question has been posted.",
@@ -254,6 +258,9 @@ const CollaborativeBoard = () => {
       
       setNewAnswer(prev => ({ ...prev, [postId]: "" }));
       
+      // Award points for answering
+      await awardPoints(user.id, "QUESTION_ANSWER");
+      
       toast({
         title: "Success",
         description: "Your answer has been posted.",
@@ -268,7 +275,7 @@ const CollaborativeBoard = () => {
     }
   };
 
-  const handleVote = async (type: "post" | "answer", id: string, currentVotes: number) => {
+  const handleVote = async (type: "post" | "answer", id: string, currentVotes: number, userId: string) => {
     if (!user) {
       toast({
         title: "Error",
@@ -285,6 +292,9 @@ const CollaborativeBoard = () => {
         .eq("id", id);
 
       if (error) throw error;
+
+      // Award points to the content creator for receiving an upvote
+      await awardPoints(userId, "UPVOTE_RECEIVED");
 
       if (type === "post") {
         setPosts(prev =>
@@ -445,7 +455,7 @@ const CollaborativeBoard = () => {
                   variant="ghost"
                   size="sm"
                   className="gap-2"
-                  onClick={() => handleVote("post", post.id, post.votes)}
+                  onClick={() => handleVote("post", post.id, post.votes, post.user_id)}
                 >
                   <ThumbsUp className="h-4 w-4" />
                   {post.votes}
@@ -495,7 +505,7 @@ const CollaborativeBoard = () => {
                           variant="ghost"
                           size="sm"
                           className="gap-2"
-                          onClick={() => handleVote("answer", answer.id, answer.votes)}
+                          onClick={() => handleVote("answer", answer.id, answer.votes, answer.user_id)}
                         >
                           <ThumbsUp className="h-4 w-4" />
                           {answer.votes}

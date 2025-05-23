@@ -13,21 +13,19 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-interface Subject {
+interface Course {
   id: string;
-  name: string;
-  category: string;
+  title: string;
 }
 
 interface Note {
   id: string;
   title: string;
-  description: string | null;
-  subject: string;
-  subject_id: string;
-  topic: string;
-  file_url: string;
-  file_type: string;
+  content: string | null;
+  course_id: string;
+  course: Course;
+  file_url: string | null;
+  file_type: string | null;
   is_public: boolean;
   created_at: string;
   user_id: string;
@@ -39,27 +37,30 @@ const NotesList = () => {
   const [notes, setNotes] = useState<Note[]>([]);
   const [filteredNotes, setFilteredNotes] = useState<Note[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedSubjectId, setSelectedSubjectId] = useState<string | null>(null);
-  const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
+  const [courses, setCourses] = useState<Course[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     if (user) {
       fetchNotes();
-      fetchSubjects();
+      fetchCourses();
     }
   }, [user]);
 
   useEffect(() => {
     filterNotes();
-  }, [searchTerm, selectedSubjectId, notes]);
+  }, [searchTerm, selectedCourseId, notes]);
 
   const fetchNotes = async () => {
     setIsLoading(true);
     try {
       const { data, error } = await supabase
         .from('notes')
-        .select('*')
+        .select(`
+          *,
+          course:courses(id, title)
+        `)
         .or(`user_id.eq.${user?.id},is_public.eq.true`)
         .order('created_at', { ascending: false });
 
@@ -78,20 +79,20 @@ const NotesList = () => {
     }
   };
 
-  const fetchSubjects = async () => {
+  const fetchCourses = async () => {
     try {
       const { data, error } = await supabase
-        .from('subjects')
-        .select('*')
-        .order('name');
+        .from('courses')
+        .select('id, title')
+        .order('title');
 
       if (error) throw error;
 
       if (data) {
-        setSubjects(data);
+        setCourses(data);
       }
     } catch (error) {
-      console.error('Error fetching subjects:', error);
+      console.error('Error fetching courses:', error);
     }
   };
 
@@ -102,13 +103,12 @@ const NotesList = () => {
       const term = searchTerm.toLowerCase();
       filtered = filtered.filter(note =>
         note.title.toLowerCase().includes(term) ||
-        note.description?.toLowerCase().includes(term) ||
-        note.topic.toLowerCase().includes(term)
+        note.content?.toLowerCase().includes(term)
       );
     }
 
-    if (selectedSubjectId) {
-      filtered = filtered.filter(note => note.subject_id === selectedSubjectId);
+    if (selectedCourseId) {
+      filtered = filtered.filter(note => note.course_id === selectedCourseId);
     }
 
     setFilteredNotes(filtered);
@@ -119,7 +119,7 @@ const NotesList = () => {
       // Get a fresh public URL for the file
       const { data: { publicUrl } } = supabase.storage
         .from('notes')
-        .getPublicUrl(note.file_url.split('/').slice(-2).join('/'));  // Extract the path from the full URL
+        .getPublicUrl(note.file_url?.split('/').slice(-2).join('/') || '');
       
       window.open(publicUrl, '_blank');
     } catch (error: any) {
@@ -131,7 +131,7 @@ const NotesList = () => {
     }
   };
 
-  const getFileTypeIcon = (fileType: string) => {
+  const getFileTypeIcon = (fileType: string | null) => {
     // You can add more file type icons here
     return <FileText className="h-5 w-5" />;
   };
@@ -146,22 +146,22 @@ const NotesList = () => {
         <div className="flex-1 relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500" />
           <Input
-            placeholder="Search notes by title, description, or topic..."
+            placeholder="Search notes by title or content..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-9"
           />
         </div>
         <div className="w-full md:w-48">
-          <Select value={selectedSubjectId || undefined} onValueChange={setSelectedSubjectId}>
+          <Select value={selectedCourseId || undefined} onValueChange={setSelectedCourseId}>
             <SelectTrigger>
-              <SelectValue placeholder="All Subjects" />
+              <SelectValue placeholder="All Courses" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Subjects</SelectItem>
-              {subjects.map((subject) => (
-                <SelectItem key={subject.id} value={subject.id}>
-                  {subject.name}
+              <SelectItem value="">All Courses</SelectItem>
+              {courses.map((course) => (
+                <SelectItem key={course.id} value={course.id}>
+                  {course.title}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -193,22 +193,24 @@ const NotesList = () => {
                   )}
                 </div>
                 <div className="text-sm text-gray-500 dark:text-gray-400">
-                  {note.description && (
-                    <p className="truncate">{note.description}</p>
+                  {note.content && (
+                    <p className="truncate">{note.content}</p>
                   )}
                   <p>
-                    <span className="font-medium">{note.subject}</span> • {note.topic} • {formatDate(note.created_at)}
+                    <span className="font-medium">{note.course?.title || 'Unknown Course'}</span> • {formatDate(note.created_at)}
                   </p>
                 </div>
               </div>
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => handleDownload(note)}
-                title="Download"
-              >
-                <Download className="h-4 w-4" />
-              </Button>
+              {note.file_url && (
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => handleDownload(note)}
+                  title="Download"
+                >
+                  <Download className="h-4 w-4" />
+                </Button>
+              )}
             </div>
           ))}
         </div>

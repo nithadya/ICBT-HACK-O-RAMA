@@ -8,6 +8,8 @@ import {
   Brain,
   RefreshCcw,
   MessageSquare,
+  Trophy,
+  User,
 } from "lucide-react";
 
 const navigation = [
@@ -18,6 +20,8 @@ const navigation = [
   { name: "Flashcards", href: "/flashcards", icon: Brain },
   { name: "Revision", href: "/revision", icon: RefreshCcw },
   { name: "Discussions", href: "/discussions", icon: MessageSquare },
+  { name: "Leaderboard", href: "/leaderboard", icon: Trophy },
+  { name: "Profile", href: "/profile", icon: User },
 ];
 
 const Navigation = () => {
