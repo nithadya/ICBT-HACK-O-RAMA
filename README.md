@@ -1,73 +1,214 @@
-# Welcome to your Lovable project
+# ClassSync Nexus Hub
 
-## Project info
+## 🚀 Project Overview
 
-**URL**: https://lovable.dev/projects/bf501a6e-0ca3-4775-8567-2ab5063f6722
+ClassSync Nexus Hub is an advanced educational platform that seamlessly integrates course management, collaborative learning, and AI-powered assistance. The platform leverages cutting-edge technologies to create an intuitive and efficient learning environment.
 
-## How can I edit this code?
+## 🏗️ Architecture Overview
 
-There are several ways of editing your application.
+### Frontend Architecture (Contributed by Prabath)
+The frontend is built using a modern React-based stack with TypeScript, emphasizing type safety and component reusability.
 
-**Use Lovable**
+#### Key Technologies
+- **React 18** - For building a reactive and component-based UI
+- **TypeScript** - Ensuring type safety and better developer experience
+- **Tailwind CSS** - Utility-first CSS framework for responsive design
+- **Shadcn/ui** - Accessible and customizable component library
+- **Vite** - Next-generation frontend tooling for faster development
+- **React Query** - For efficient server state management
+- **Zustand** - Lightweight state management solution
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/bf501a6e-0ca3-4775-8567-2ab5063f6722) and start prompting.
+#### Component Structure
+```
+src/
+├── components/         # Reusable UI components
+│   ├── ui/            # Base UI components
+│   ├── course/        # Course-related components
+│   ├── notes/         # Notes management components
+│   └── dashboard/     # Dashboard components
+├── pages/             # Route-based page components
+├── hooks/             # Custom React hooks
+├── context/           # React context providers
+├── lib/              # Utility functions and helpers
+└── integrations/     # Third-party service integrations
+```
 
-Changes made via Lovable will be committed automatically to this repo.
+### Backend Architecture (Contributed by Mihisara)
+The backend utilizes Supabase for robust data management and authentication.
 
-**Use your preferred IDE**
+#### Key Technologies
+- **Supabase**
+  - Real-time Database
+  - Authentication
+  - Storage
+  - Edge Functions
+- **PostgreSQL** - Advanced relational database
+- **Row Level Security (RLS)** - For granular data access control
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+#### Database Schema
+```sql
+-- Core Tables
+courses
+  id uuid primary key
+  title text
+  description text
+  subject text
+  semester text
+  year integer
+  created_at timestamp
+  creator_id uuid references auth.users
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+notes
+  id uuid primary key
+  title text
+  content text
+  file_url text
+  course_id uuid references courses
+  user_id uuid references auth.users
+  is_public boolean
+  created_at timestamp
 
-Follow these steps:
+user_roles
+  user_id uuid references auth.users
+  role text check (role in ('learner', 'contributor', 'admin'))
+  created_at timestamp
+```
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+### AI Integration Architecture (Contributed by Mihisara)
+The AI system is designed for intelligent content processing and user assistance.
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+#### Technologies Used
+- **OpenAI GPT-4** - For advanced text processing and generation
+- **Supabase Edge Functions** - For serverless AI processing
+- **Vector Embeddings** - For semantic search capabilities
 
-# Step 3: Install the necessary dependencies.
-npm i
+#### AI Features
+1. **Content Enhancement**
+   - Automatic content summarization
+   - Key points extraction
+   - Study material generation
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+2. **Smart Search**
+   - Semantic search across notes
+   - Context-aware query processing
+   - Personalized content recommendations
+
+## 🛠️ Technical Implementation Details
+
+### Authentication Flow
+1. User authentication through Supabase Auth
+2. Role-based access control using custom claims
+3. Secure session management with JWT tokens
+
+### Data Flow
+```mermaid
+graph LR
+    A[Client] --> B[React Components]
+    B --> C[React Query]
+    C --> D[Supabase Client]
+    D --> E[Supabase Backend]
+    E --> F[PostgreSQL]
+    E --> G[File Storage]
+    E --> H[Edge Functions]
+    H --> I[OpenAI API]
+```
+
+### Security Measures
+- Row Level Security (RLS) policies
+- JWT-based authentication
+- Secure file upload validation
+- Rate limiting on API endpoints
+- Environment variable encryption
+
+## 🚀 Performance Optimizations
+
+### Frontend
+- Code splitting using React.lazy()
+- Optimized asset loading
+- Memoized components
+- Virtual scrolling for large lists
+- Service Worker for offline capabilities
+
+### Backend
+- Database indexing
+- Query optimization
+- Caching strategies
+- Connection pooling
+- Rate limiting
+
+## 📦 Dependencies
+
+```json
+{
+  "dependencies": {
+    "@supabase/supabase-js": "latest",
+    "react": "^18.x",
+    "react-query": "^4.x",
+    "tailwindcss": "^3.x",
+    "typescript": "^5.x",
+    "zustand": "^4.x"
+  }
+}
+```
+
+## 🔧 Development Setup
+
+1. Clone the repository
+```bash
+git clone https://github.com/your-repo/classync-nexus-hub.git
+```
+
+2. Install dependencies
+```bash
+npm install
+```
+
+3. Set up environment variables
+```bash
+cp .env.example .env
+# Configure your environment variables
+```
+
+4. Start development server
+```bash
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+## 🌟 Key Features
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+1. **Course Management**
+   - Dynamic course creation
+   - Resource organization
+   - Progress tracking
 
-**Use GitHub Codespaces**
+2. **Notes System**
+   - Rich text editing
+   - File attachments
+   - Collaborative editing
+   - Version control
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+3. **AI Assistant**
+   - Smart content summarization
+   - Study material generation
+   - Intelligent search
 
-## What technologies are used for this project?
+4. **Analytics Dashboard**
+   - Learning progress metrics
+   - Engagement analytics
+   - Performance insights
 
-This project is built with:
+## 📈 Scalability Considerations
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+- Horizontal scaling capability
+- Microservices architecture ready
+- Cloud-native deployment support
+- Database sharding preparation
+- CDN integration for static assets
 
-## How can I deploy this project?
+## 🤝 Contributing
 
-Simply open [Lovable](https://lovable.dev/projects/bf501a6e-0ca3-4775-8567-2ab5063f6722) and click on Share -> Publish.
+Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on our code of conduct and the process for submitting pull requests.
 
-## Can I connect a custom domain to my Lovable project?
+## 📄 License
 
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details.
