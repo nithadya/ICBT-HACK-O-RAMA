@@ -22,6 +22,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Upload, X, Loader2 } from "lucide-react";
+import { moderateContent } from "@/lib/moderation";
 
 interface Subject {
   id: string;
@@ -157,7 +158,7 @@ const NotesUpload = ({ onUploadComplete }: NotesUploadProps) => {
     setIsUploading(true);
 
     try {
-      // Upload file to storage
+      // Upload file to storage first
       const fileExt = selectedFile.name.split('.').pop();
       const fileName = `${crypto.randomUUID()}.${fileExt}`;
       const filePath = `${user.id}/${fileName}`;
@@ -174,7 +175,7 @@ const NotesUpload = ({ onUploadComplete }: NotesUploadProps) => {
         .getPublicUrl(filePath);
 
       // Create note record in database
-      const { error: dbError } = await supabase
+      const { data: noteData, error: dbError } = await supabase
         .from('notes')
         .insert({
           title,
@@ -184,9 +185,23 @@ const NotesUpload = ({ onUploadComplete }: NotesUploadProps) => {
           file_type: selectedFile.type,
           is_public: isPublic,
           user_id: user.id
-        });
+        })
+        .select()
+        .single();
 
       if (dbError) throw dbError;
+
+      // Moderate the content after saving
+      const contentToModerate = `${title}\n${description || ''}`;
+      const moderationResult = await moderateContent(contentToModerate, 'notes', noteData.id);
+
+      // If content is not allowed, hide it immediately
+      if (!moderationResult.isAllowed) {
+        await supabase
+          .from('notes')
+          .update({ is_hidden: true })
+          .eq('id', noteData.id);
+      }
 
       toast({
         title: "Success",

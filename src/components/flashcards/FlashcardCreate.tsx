@@ -22,6 +22,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Plus, Loader2 } from "lucide-react";
+import { moderateContent } from "@/lib/moderation";
 
 interface Subject {
   id: string;
@@ -91,6 +92,14 @@ const FlashcardCreate = ({ onCreateComplete }: FlashcardCreateProps) => {
         description: "Please fill in all required fields.",
         variant: "destructive",
       });
+      return;
+    }
+
+    // Moderate question and answer content
+    const isQuestionAllowed = await moderateContent(question);
+    const isAnswerAllowed = await moderateContent(answer);
+    
+    if (!isQuestionAllowed || !isAnswerAllowed) {
       return;
     }
 

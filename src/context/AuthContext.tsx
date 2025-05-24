@@ -1,6 +1,5 @@
-
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
 import { Session, User } from "@supabase/supabase-js";
 
@@ -19,65 +18,92 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
-    // Set up auth state listener FIRST
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      
-      // Check if user is admin
-      if (session?.user) {
-        setTimeout(() => {
-          checkUserRole(session.user.id);
-        }, 0);
-      } else {
-        setIsAdmin(false);
-      }
-    });
-
-    // THEN check for existing session
+    // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
       setUser(session?.user ?? null);
-      setIsLoading(false);
-      
-      // Check if user is admin
-      if (session?.user) {
-        checkUserRole(session.user.id);
-      }
+      setIsAdmin(
+        session?.user?.role === 'admin' ||
+        session?.user?.user_metadata?.role === 'admin' ||
+        session?.user?.email === 'gamlathrasindu007@gmail.com' ||
+        session?.user?.email === 'jmdevnath@gmail.com'
+      );
     });
 
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, []);
+    // Listen for changes
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+      setIsAdmin(
+        session?.user?.role === 'admin' ||
+        session?.user?.user_metadata?.role === 'admin' ||
+        session?.user?.email === 'gamlathrasindu007@gmail.com' ||
+        session?.user?.email === 'jmdevnath@gmail.com'
+      );
+      setLoading(false);
+    });
 
-  const checkUserRole = async (userId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', userId)
-        .single();
-      
-      if (error) throw error;
-      
-      setIsAdmin(data.role === 'admin');
-    } catch (error) {
-      console.error('Error checking user role:', error);
-      setIsAdmin(false);
-    }
-  };
+    return () => subscription.unsubscribe();
+  }, []);
 
   const signIn = async (email: string, password: string) => {
     try {
-      setIsLoading(true);
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) throw error;
+      setLoading(true);
+      
+      // Simple sign in attempt first
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
+
+      if (error) {
+        // If it's the admin account and login failed, try to create it
+        if (email === "gamlathrasindu007@gmail.com") {
+          const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+            email,
+            password,
+            options: {
+              emailRedirectTo: `${window.location.origin}/auth/callback`,
+              data: {
+                role: "admin",
+                full_name: "Admin User"
+              }
+            }
+          });
+
+          if (signUpError) {
+            throw signUpError;
+          }
+
+          // Show a specific message for admin signup
+          toast({
+            title: "Admin Account Setup",
+            description: "Please check your email to verify your account.",
+          });
+          return;
+        }
+        throw error;
+      }
+
+      // If login successful and it's admin, ensure role is set
+      if (data.user && email === "gamlathrasindu007@gmail.com") {
+        const { error: updateError } = await supabase.auth.updateUser({
+          data: {
+            role: "admin",
+            full_name: "Admin User"
+          }
+        });
+
+        if (updateError) {
+          console.error('Failed to update admin role:', updateError);
+        }
+      }
+
       toast({
         title: "Welcome back!",
         description: "You have been successfully signed in.",
@@ -85,25 +111,29 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     } catch (error: any) {
       toast({
         title: "Sign in failed",
-        description: error.message,
+        description: error.message || "An error occurred during sign in.",
         variant: "destructive",
       });
       throw error;
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
   const signUp = async (email: string, password: string, fullName: string, role: string) => {
     try {
-      setIsLoading(true);
+      setLoading(true);
+      // Force admin role for the specific email
+      const finalRole = email === "gamlathrasindu007@gmail.com" ? "admin" : role;
+      const finalName = email === "gamlathrasindu007@gmail.com" ? "Admin User" : fullName;
+
       const { error } = await supabase.auth.signUp({
         email,
         password,
         options: {
           data: {
-            full_name: fullName,
-            role: role,
+            full_name: finalName,
+            role: finalRole,
           },
         },
       });
@@ -120,13 +150,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       });
       throw error;
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
   const signOut = async () => {
     try {
-      setIsLoading(true);
+      setLoading(true);
       await supabase.auth.signOut();
       toast({
         title: "Signed out",
@@ -139,7 +169,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         variant: "destructive",
       });
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
@@ -148,7 +178,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       value={{
         user,
         session,
-        isLoading,
+        isLoading: loading,
         signIn,
         signUp,
         signOut,

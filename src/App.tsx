@@ -5,6 +5,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/context/AuthContext";
 import { ThemeProvider } from "@/context/ThemeContext";
+import { useEffect } from 'react';
+import { supabase } from '@/lib/supabase';
 
 import MainLayout from "@/components/layout/MainLayout";
 import Landing from "@/pages/Landing";
@@ -49,6 +51,27 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
 const queryClient = new QueryClient();
 
+// Add this component
+const AuthCallback = () => {
+  useEffect(() => {
+    supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN') {
+        // Redirect to the appropriate page after verification
+        window.location.href = '/app/admin';
+      }
+    });
+  }, []);
+
+  return (
+    <div className="min-h-screen flex items-center justify-center">
+      <div className="text-center">
+        <h2 className="text-2xl font-bold mb-4">Verifying...</h2>
+        <p>Please wait while we verify your account.</p>
+      </div>
+    </div>
+  );
+};
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <ThemeProvider>
@@ -61,6 +84,7 @@ const App = () => (
               {/* Public Routes */}
               <Route path="/" element={<Landing />} />
               <Route path="/auth" element={<Auth />} />
+              <Route path="/auth/callback" element={<AuthCallback />} />
               
               {/* Protected Routes */}
               <Route path="/app" element={

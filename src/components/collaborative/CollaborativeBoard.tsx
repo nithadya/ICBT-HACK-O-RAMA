@@ -19,6 +19,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { MessageSquarePlus, ThumbsUp, Flag, CheckCircle2 } from "lucide-react";
 import { awardPoints } from "@/lib/points";
+import { moderateContent } from "@/lib/moderation";
 
 interface User {
   email: string;
@@ -172,6 +173,14 @@ const CollaborativeBoard = () => {
       return;
     }
 
+    // Moderate title and content
+    const isTitleAllowed = await moderateContent(newPost.title);
+    const isContentAllowed = await moderateContent(newPost.content);
+    
+    if (!isTitleAllowed || !isContentAllowed) {
+      return;
+    }
+
     try {
       const { data, error } = await supabase
         .from("collaborative_posts")
@@ -229,6 +238,12 @@ const CollaborativeBoard = () => {
         description: "Answer cannot be empty.",
         variant: "destructive",
       });
+      return;
+    }
+
+    // Moderate answer content
+    const isContentAllowed = await moderateContent(newAnswer[postId]);
+    if (!isContentAllowed) {
       return;
     }
 
