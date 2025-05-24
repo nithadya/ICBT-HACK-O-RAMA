@@ -1,19 +1,17 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/supabase";
 import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Trophy, Medal, Award, Star } from "lucide-react";
-import { toast } from "@/components/ui/use-toast";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Progress } from "@/components/ui/progress";
+import { Trophy, Medal, Award, Star, Search } from "lucide-react";
+import { toast } from "@/hooks/use-toast";
+import { motion } from "framer-motion";
+import { CollaboratorPanel } from "./CollaboratorPanel";
 
 interface UserPoints {
   id: string;
@@ -31,6 +29,9 @@ interface UserPoints {
     avatar_url: string | null;
   };
 }
+
+type SortOption = "points" | "notes" | "questions";
+type TimeRange = "all" | "month" | "week";
 
 const getLevelIcon = (level: string) => {
   switch (level) {
@@ -60,18 +61,36 @@ const getLevelColor = (level: string) => {
 
 export const Leaderboard = () => {
   const [users, setUsers] = useState<UserPoints[]>([]);
+  const [filteredUsers, setFilteredUsers] = useState<UserPoints[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sortBy, setSortBy] = useState<SortOption>("points");
+  const [timeRange, setTimeRange] = useState<TimeRange>("all");
   const { user } = useAuth();
   const [currentUserRank, setCurrentUserRank] = useState<UserPoints | null>(null);
 
+  const calculateLevel = (points: number): string => {
+    if (points >= 10000) return "Expert";
+    if (points >= 5000) return "Advanced";
+    if (points >= 1000) return "Intermediate";
+    return "Beginner";
+  };
+
   const fetchLeaderboard = async () => {
     try {
-      // First, get user points data
-      const { data: pointsData, error: pointsError } = await supabase
+      let query = supabase
         .from("user_points")
         .select("*")
-        .order('points', { ascending: false })
-        .limit(100);
+        .order('points', { ascending: false });
+
+      // Apply time range filter
+      if (timeRange === "month") {
+        query = query.gte('last_updated', new Date(new Date().setMonth(new Date().getMonth() - 1)).toISOString());
+      } else if (timeRange === "week") {
+        query = query.gte('last_updated', new Date(new Date().setDate(new Date().getDate() - 7)).toISOString());
+      }
+
+      const { data: pointsData, error: pointsError } = await query;
 
       if (pointsError) {
         console.error("Error fetching points:", pointsError);
@@ -83,7 +102,7 @@ export const Leaderboard = () => {
         return;
       }
 
-      // Then, get profiles data separately
+      // Fetch profiles data
       const { data: profilesData, error: profilesError } = await supabase
         .from("profiles")
         .select("id, full_name, avatar_url")
@@ -94,9 +113,11 @@ export const Leaderboard = () => {
         throw profilesError;
       }
 
-      // Combine the data
-      const combinedData = pointsData.map(point => ({
+      // Combine and process the data
+      const combinedData = pointsData.map((point, index) => ({
         ...point,
+        rank: index + 1,
+        level: calculateLevel(point.points),
         profiles: profilesData?.find(profile => profile.id === point.id) || {
           full_name: 'Anonymous User',
           avatar_url: null
@@ -124,7 +145,7 @@ export const Leaderboard = () => {
   useEffect(() => {
     fetchLeaderboard();
 
-    // Subscribe to realtime updates
+    // Set up real-time subscription
     const channel = supabase
       .channel('user_points_changes')
       .on(
@@ -143,7 +164,36 @@ export const Leaderboard = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user]);
+  }, [timeRange]);
+
+  // Filter and sort users
+  useEffect(() => {
+    let filtered = [...users];
+
+    // Apply search filter
+    if (searchQuery) {
+      filtered = filtered.filter(user =>
+        user.profiles.full_name.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    }
+
+    // Apply sorting
+    filtered.sort((a, b) => {
+      switch (sortBy) {
+        case "notes":
+          return b.notes_uploaded - a.notes_uploaded;
+        case "questions":
+          return b.questions_answered - a.questions_answered;
+        default:
+          return b.points - a.points;
+      }
+    });
+
+    setFilteredUsers(filtered);
+  }, [users, searchQuery, sortBy]);
+
+  // Add role check
+  const isContributor = user?.user_metadata?.role === "contributor";
 
   if (isLoading) {
     return (
@@ -167,98 +217,162 @@ export const Leaderboard = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="container mx-auto px-4 py-8 space-y-8">
+      {/* Show CollaboratorPanel for contributors */}
+      {isContributor && <CollaboratorPanel />}
+
+      {/* Header and Controls */}
+      <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+        <div className="flex items-center gap-3">
+          <Trophy className="h-8 w-8 text-primary" />
+          <h1 className="text-3xl font-bold">Leaderboard</h1>
+        </div>
+
+        <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto">
+          <div className="relative flex-1 sm:w-64">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+            <Input
+              placeholder="Search learners..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+
+          <Select value={sortBy} onValueChange={(value: SortOption) => setSortBy(value)}>
+            <SelectTrigger className="w-full sm:w-40">
+              <SelectValue placeholder="Sort by" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="points">Points</SelectItem>
+              <SelectItem value="notes">Notes</SelectItem>
+              <SelectItem value="questions">Questions</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Tabs value={timeRange} onValueChange={(value: TimeRange) => setTimeRange(value)}>
+            <TabsList>
+              <TabsTrigger value="all">All Time</TabsTrigger>
+              <TabsTrigger value="month">This Month</TabsTrigger>
+              <TabsTrigger value="week">This Week</TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </div>
+      </div>
+
+      {/* Current User Card */}
       {currentUserRank && (
-        <Card className="p-6 bg-primary/5">
-          <h2 className="text-xl font-semibold mb-4">Your Ranking</h2>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <Avatar className="h-12 w-12">
-                <AvatarImage src={currentUserRank.profiles?.avatar_url || undefined} />
-                <AvatarFallback>
-                  {currentUserRank.profiles?.full_name?.[0] || 'A'}
-                </AvatarFallback>
-              </Avatar>
-              <div>
-                <p className="font-medium">
-                  {currentUserRank.profiles?.full_name || 'Anonymous User'}
-                </p>
-                <div className="flex items-center space-x-2">
-                  <Badge variant="outline">Rank #{currentUserRank.rank}</Badge>
-                  <Badge className={getLevelColor(currentUserRank.level)}>
-                    {getLevelIcon(currentUserRank.level)}
-                    <span className="ml-1">{currentUserRank.level}</span>
-                  </Badge>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+        >
+          <Card className="p-6 bg-primary/5">
+            <h2 className="text-xl font-semibold mb-4">Your Ranking</h2>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <Avatar className="h-12 w-12">
+                  <AvatarImage src={currentUserRank.profiles?.avatar_url || undefined} />
+                  <AvatarFallback>
+                    {currentUserRank.profiles?.full_name?.[0] || 'A'}
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <p className="font-medium">
+                    {currentUserRank.profiles?.full_name || 'Anonymous User'}
+                  </p>
+                  <div className="flex items-center space-x-2">
+                    <Badge variant="outline">Rank #{currentUserRank.rank}</Badge>
+                    <Badge className={getLevelColor(currentUserRank.level)}>
+                      {getLevelIcon(currentUserRank.level)}
+                      <span className="ml-1">{currentUserRank.level}</span>
+                    </Badge>
+                  </div>
                 </div>
               </div>
+              <div className="text-right">
+                <p className="text-2xl font-bold">{currentUserRank.points}</p>
+                <p className="text-sm text-muted-foreground">Total Points</p>
+              </div>
             </div>
-            <div className="text-right">
-              <p className="text-2xl font-bold">{currentUserRank.points}</p>
-              <p className="text-sm text-muted-foreground">Total Points</p>
+
+            <div className="mt-6 grid grid-cols-3 gap-4">
+              <div className="text-center p-2 bg-background rounded-lg">
+                <p className="text-lg font-semibold">{currentUserRank.notes_uploaded}</p>
+                <p className="text-sm text-muted-foreground">Notes</p>
+              </div>
+              <div className="text-center p-2 bg-background rounded-lg">
+                <p className="text-lg font-semibold">{currentUserRank.questions_answered}</p>
+                <p className="text-sm text-muted-foreground">Questions</p>
+              </div>
+              <div className="text-center p-2 bg-background rounded-lg">
+                <p className="text-lg font-semibold">{currentUserRank.collaborative_posts}</p>
+                <p className="text-sm text-muted-foreground">Posts</p>
+              </div>
             </div>
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mt-4">
-            <div className="text-center p-2 bg-background rounded-lg">
-              <p className="text-lg font-semibold">{currentUserRank.notes_uploaded}</p>
-              <p className="text-sm text-muted-foreground">Notes Uploaded</p>
+
+            <div className="mt-4">
+              <div className="flex justify-between text-sm mb-2">
+                <span className="text-muted-foreground">Progress to Next Level</span>
+                <span>{currentUserRank.points % 1000}/1000 points</span>
+              </div>
+              <Progress value={(currentUserRank.points % 1000) / 10} />
             </div>
-            <div className="text-center p-2 bg-background rounded-lg">
-              <p className="text-lg font-semibold">{currentUserRank.questions_answered}</p>
-              <p className="text-sm text-muted-foreground">Questions Answered</p>
-            </div>
-            <div className="text-center p-2 bg-background rounded-lg">
-              <p className="text-lg font-semibold">{currentUserRank.collaborative_posts}</p>
-              <p className="text-sm text-muted-foreground">Posts Created</p>
-            </div>
-          </div>
-        </Card>
+          </Card>
+        </motion.div>
       )}
 
-      <Card>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-12">Rank</TableHead>
-              <TableHead>User</TableHead>
-              <TableHead>Level</TableHead>
-              <TableHead className="text-right">Points</TableHead>
-              <TableHead className="text-right">Notes</TableHead>
-              <TableHead className="text-right">Answers</TableHead>
-              <TableHead className="text-right">Posts</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {users.map((userPoint) => (
-              <TableRow key={userPoint.id}>
-                <TableCell className="font-medium">#{userPoint.rank}</TableCell>
-                <TableCell>
-                  <div className="flex items-center space-x-2">
-                    <Avatar className="h-8 w-8">
-                      <AvatarImage src={userPoint.profiles?.avatar_url || undefined} />
-                      <AvatarFallback>
-                        {userPoint.profiles?.full_name?.[0] || 'A'}
-                      </AvatarFallback>
-                    </Avatar>
-                    <span>{userPoint.profiles?.full_name || 'Anonymous User'}</span>
+      {/* Leaderboard Grid */}
+      <div className="grid gap-4">
+        {filteredUsers.map((userPoint, index) => (
+          <motion.div
+            key={userPoint.id}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: index * 0.1 }}
+          >
+            <Card className="p-4">
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-3 flex-1">
+                  <div className="font-semibold text-lg w-8">#{userPoint.rank}</div>
+                  <Avatar className="h-10 w-10">
+                    <AvatarImage src={userPoint.profiles?.avatar_url || undefined} />
+                    <AvatarFallback>
+                      {userPoint.profiles?.full_name?.[0] || 'A'}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <p className="font-medium">{userPoint.profiles?.full_name}</p>
+                    <Badge className={getLevelColor(userPoint.level)}>
+                      {getLevelIcon(userPoint.level)}
+                      <span className="ml-1">{userPoint.level}</span>
+                    </Badge>
                   </div>
-                </TableCell>
-                <TableCell>
-                  <Badge className={getLevelColor(userPoint.level)}>
-                    {getLevelIcon(userPoint.level)}
-                    <span className="ml-1">{userPoint.level}</span>
-                  </Badge>
-                </TableCell>
-                <TableCell className="text-right font-semibold">
-                  {userPoint.points}
-                </TableCell>
-                <TableCell className="text-right">{userPoint.notes_uploaded}</TableCell>
-                <TableCell className="text-right">{userPoint.questions_answered}</TableCell>
-                <TableCell className="text-right">{userPoint.collaborative_posts}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </Card>
+                </div>
+
+                <div className="grid grid-cols-4 gap-4 text-center">
+                  <div>
+                    <p className="font-semibold">{userPoint.points}</p>
+                    <p className="text-xs text-muted-foreground">Points</p>
+                  </div>
+                  <div>
+                    <p className="font-semibold">{userPoint.notes_uploaded}</p>
+                    <p className="text-xs text-muted-foreground">Notes</p>
+                  </div>
+                  <div>
+                    <p className="font-semibold">{userPoint.questions_answered}</p>
+                    <p className="text-xs text-muted-foreground">Questions</p>
+                  </div>
+                  <div>
+                    <p className="font-semibold">{userPoint.collaborative_posts}</p>
+                    <p className="text-xs text-muted-foreground">Posts</p>
+                  </div>
+                </div>
+              </div>
+            </Card>
+          </motion.div>
+        ))}
+      </div>
     </div>
   );
 };

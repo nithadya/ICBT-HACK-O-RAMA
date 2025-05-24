@@ -109,13 +109,13 @@ const Auth = () => {
               />
             </div>
             <CardTitle className="heading-2 text-primary">
-            ClassSync
-          </CardTitle>
+              ClassSync
+            </CardTitle>
             <CardDescription className="body-base">
               Enterprise Learning Management
-          </CardDescription>
-        </CardHeader>
-        
+            </CardDescription>
+          </CardHeader>
+
           <Tabs value={authMode} onValueChange={(value) => setAuthMode(value as "sign-in" | "sign-up")}>
             <TabsList className="grid grid-cols-2 w-full bg-muted rounded-md p-1">
               <TabsTrigger 
@@ -130,162 +130,162 @@ const Auth = () => {
               >
                 Sign Up
               </TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="sign-in">
-            <form onSubmit={handleSignIn}>
-              <CardContent className="space-y-4 pt-4">
+            </TabsList>
+
+            <TabsContent value="sign-in">
+              <form onSubmit={handleSignIn}>
+                <CardContent className="space-y-4 pt-4">
                   <div className="space-y-1">
                     <Label htmlFor="signin-email" className="form-label">
                       Email Address
                     </Label>
-                  <Input
-                    id="signin-email"
-                    type="email"
+                    <Input
+                      id="signin-email"
+                      type="email"
                       placeholder="name@company.com"
-                    value={signInEmail}
-                    onChange={(e) => setSignInEmail(e.target.value)}
+                      value={signInEmail}
+                      onChange={(e) => setSignInEmail(e.target.value)}
                       className={`input-field ${errors.signInEmail ? "input-field-error" : ""}`}
-                  />
-                  {errors.signInEmail && (
+                    />
+                    {errors.signInEmail && (
                       <p className="error-message">{errors.signInEmail}</p>
-                  )}
-                </div>
-                
+                    )}
+                  </div>
+
                   <div className="space-y-1">
                     <Label htmlFor="signin-password" className="form-label">
                       Password
                     </Label>
-                  <div className="relative">
-                    <Input
-                      id="signin-password"
-                      type={showPassword ? "text" : "password"}
+                    <div className="relative">
+                      <Input
+                        id="signin-password"
+                        type={showPassword ? "text" : "password"}
                         placeholder="Enter your password"
-                      value={signInPassword}
-                      onChange={(e) => setSignInPassword(e.target.value)}
+                        value={signInPassword}
+                        onChange={(e) => setSignInPassword(e.target.value)}
                         className={`input-field ${errors.signInPassword ? "input-field-error" : ""}`}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
                         className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-secondary transition-colors"
-                    >
-                      {showPassword ? <EyeOffIcon size={18} /> : <EyeIcon size={18} />}
-                    </button>
-                  </div>
-                  {errors.signInPassword && (
+                      >
+                        {showPassword ? <EyeOffIcon size={18} /> : <EyeIcon size={18} />}
+                      </button>
+                    </div>
+                    {errors.signInPassword && (
                       <p className="error-message">{errors.signInPassword}</p>
-                  )}
-                </div>
-              </CardContent>
-              
+                    )}
+                  </div>
+                </CardContent>
+
                 <CardFooter className="pt-2">
-                <Button 
-                  type="submit" 
+                  <Button 
+                    type="submit" 
                     className="w-full button-primary"
-                  disabled={isLoading}
-                >
+                    disabled={isLoading}
+                  >
                     {isLoading ? (
                       <div className="flex items-center justify-center">
                         <div className="spinner mr-2" />
                         Authenticating...
                       </div>
                     ) : "Sign In"}
-                </Button>
-              </CardFooter>
-            </form>
-          </TabsContent>
-          
-          <TabsContent value="sign-up">
-            <form onSubmit={handleSignUp}>
-              <CardContent className="space-y-4 pt-4">
+                  </Button>
+                </CardFooter>
+              </form>
+            </TabsContent>
+
+            <TabsContent value="sign-up">
+              <form onSubmit={handleSignUp}>
+                <CardContent className="space-y-4 pt-4">
                   <div className="space-y-1">
                     <Label htmlFor="fullname" className="form-label">
                       Full Name
                     </Label>
-                  <Input
-                    id="fullname"
-                    placeholder="John Doe"
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
+                    <Input
+                      id="fullname"
+                      placeholder="John Doe"
+                      value={fullName}
+                      onChange={(e) => setFullName(e.target.value)}
                       className={`input-field ${errors.fullName ? "input-field-error" : ""}`}
-                  />
-                  {errors.fullName && (
+                    />
+                    {errors.fullName && (
                       <p className="error-message">{errors.fullName}</p>
-                  )}
-                </div>
-                
+                    )}
+                  </div>
+
                   <div className="space-y-1">
                     <Label htmlFor="signup-email" className="form-label">
                       Work Email
                     </Label>
-                  <Input
-                    id="signup-email"
-                    type="email"
+                    <Input
+                      id="signup-email"
+                      type="email"
                       placeholder="name@company.com"
-                    value={signUpEmail}
-                    onChange={(e) => setSignUpEmail(e.target.value)}
+                      value={signUpEmail}
+                      onChange={(e) => setSignUpEmail(e.target.value)}
                       className={`input-field ${errors.signUpEmail ? "input-field-error" : ""}`}
-                  />
-                  {errors.signUpEmail && (
+                    />
+                    {errors.signUpEmail && (
                       <p className="error-message">{errors.signUpEmail}</p>
-                  )}
-                </div>
-                
+                    )}
+                  </div>
+
                   <div className="space-y-1">
                     <Label htmlFor="signup-password" className="form-label">
                       Password
                     </Label>
-                  <div className="relative">
-                    <Input
-                      id="signup-password"
-                      type={showPassword ? "text" : "password"}
+                    <div className="relative">
+                      <Input
+                        id="signup-password"
+                        type={showPassword ? "text" : "password"}
                         placeholder="Create a strong password"
-                      value={signUpPassword}
-                      onChange={(e) => setSignUpPassword(e.target.value)}
+                        value={signUpPassword}
+                        onChange={(e) => setSignUpPassword(e.target.value)}
                         className={`input-field ${errors.signUpPassword ? "input-field-error" : ""}`}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
                         className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-secondary transition-colors"
-                    >
-                      {showPassword ? <EyeOffIcon size={18} /> : <EyeIcon size={18} />}
-                    </button>
-                  </div>
-                  {errors.signUpPassword && (
+                      >
+                        {showPassword ? <EyeOffIcon size={18} /> : <EyeIcon size={18} />}
+                      </button>
+                    </div>
+                    {errors.signUpPassword && (
                       <p className="error-message">{errors.signUpPassword}</p>
-                  )}
-                </div>
-                
+                    )}
+                  </div>
+
                   <div className="space-y-1">
                     <Label htmlFor="confirm-password" className="form-label">
                       Confirm Password
                     </Label>
-                  <Input
-                    id="confirm-password"
-                    type={showPassword ? "text" : "password"}
+                    <Input
+                      id="confirm-password"
+                      type={showPassword ? "text" : "password"}
                       placeholder="Confirm your password"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
                       className={`input-field ${errors.confirmPassword ? "input-field-error" : ""}`}
-                  />
-                  {errors.confirmPassword && (
+                    />
+                    {errors.confirmPassword && (
                       <p className="error-message">{errors.confirmPassword}</p>
-                  )}
-                </div>
-                
+                    )}
+                  </div>
+
                   <div className="space-y-1">
                     <Label htmlFor="role" className="form-label">
                       Account Type
                     </Label>
-                  <Select value={role} onValueChange={setRole}>
-                    <SelectTrigger 
-                      id="role"
+                    <Select value={role} onValueChange={setRole}>
+                      <SelectTrigger 
+                        id="role"
                         className={`select-trigger ${errors.role ? "input-field-error" : ""}`}
-                    >
-                      <SelectValue placeholder="Select your role" />
-                    </SelectTrigger>
+                      >
+                        <SelectValue placeholder="Select your role" />
+                      </SelectTrigger>
                       <SelectContent className="select-content">
                         <SelectItem value="learner" className="select-item">
                           Learner
@@ -293,32 +293,32 @@ const Auth = () => {
                         <SelectItem value="contributor" className="select-item">
                           Contributor
                         </SelectItem>
-                    </SelectContent>
-                  </Select>
-                  {errors.role && (
+                      </SelectContent>
+                    </Select>
+                    {errors.role && (
                       <p className="error-message">{errors.role}</p>
-                  )}
-                </div>
-              </CardContent>
-              
+                    )}
+                  </div>
+                </CardContent>
+
                 <CardFooter className="pt-2">
-                <Button 
-                  type="submit" 
+                  <Button 
+                    type="submit" 
                     className="w-full button-primary"
-                  disabled={isLoading}
-                >
+                    disabled={isLoading}
+                  >
                     {isLoading ? (
                       <div className="flex items-center justify-center">
                         <div className="spinner mr-2" />
                         Creating Account...
                       </div>
                     ) : "Create Account"}
-                </Button>
-              </CardFooter>
-            </form>
-          </TabsContent>
-        </Tabs>
-      </Card>
+                  </Button>
+                </CardFooter>
+              </form>
+            </TabsContent>
+          </Tabs>
+        </Card>
       </div>
     </div>
   );

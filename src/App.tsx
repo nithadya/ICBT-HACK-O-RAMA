@@ -22,7 +22,7 @@ import CourseManagement from "@/pages/CourseManagement";
 import Flashcards from "@/pages/Flashcards";
 import RevisionTracker from "@/pages/RevisionTracker";
 import CollaborativeBoard from "@/pages/CollaborativeBoard";
-import Leaderboard from "@/pages/Leaderboard";
+import { Leaderboard } from "@/components/leaderboard/Leaderboard";
 import Profile from "@/pages/Profile";
 import Settings from "@/pages/Settings";
 import { useAuth } from "@/context/AuthContext";
